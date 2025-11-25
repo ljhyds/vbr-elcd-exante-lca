@@ -1,0 +1,15 @@
+bw2data>=4.0
+bw2calc>=2.0
+bw2io>=0.9
+bw_processing>=0.9
+matrix_utils>=0.3
+
+olca-ipc>=2.0
+olca-schema>=2.0
+
+pandas>=2.0
+numpy>=1.25
+scipy>=1.10
+matplotlib>=3.7
+
+tqdm>=4.66
