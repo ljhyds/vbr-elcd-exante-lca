@@ -33,7 +33,7 @@ This enables an open and reproducible reconstruction of the core modelling logic
 * **openLCA 2.5.x**
 * **Python 3.11** (recommended)
 * **Brightway2 / Brightway3 stack**
-* **openLCA IPC client libraries (**`**, **`**)**
+* **openLCA IPC client libraries (olca-ipc, olca-schema)**
 
 Install Python dependencies:
 
