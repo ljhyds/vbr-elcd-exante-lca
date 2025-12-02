@@ -177,10 +177,10 @@ def get_default_params():
         "eta_furn_ind": 0.75,
 
         "E_mix": 0.025,      # kWh/kg, Pilot scale data from Georgiades et al. 2025
-        "E_pellet": 0.05,     # kWh/kg, Pilot scale data from Georgiades et al. 2025
+        "E_pellet": 0.05,     # kWh/kg, Ind scale data from Georgiades et al. 2025
         "E_preheat_extra": 0.00,
         "E_cool": 0.00,
-        "E_mill": 0.05,      # kWh/kg, BAT
+        "E_mill": 0.05,      # kWh/kg,
 
         "transport_distance_km": 50.0,   # Derived from Georgiades et al. (2025) SI Tables S12–S14:
     }
