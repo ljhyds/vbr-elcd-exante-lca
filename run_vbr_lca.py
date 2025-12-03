@@ -117,28 +117,58 @@ def find_bg_activity(db, name_substring, unit=None, location=None):
 # -----------------------------
 
 def compute_Qmin_and_Efurn(p):
+    # 1) Moisture content and wet BR mass
     m_BR_wet = 1.0 / (1.0 - p["w_moist"])    # kg wet BR per kg dry BR
-    m_water = m_BR_wet * p["w_moist"]     # kg water per kg BR dry solids
+    m_water = m_BR_wet * p["w_moist"]        # kg water per kg dry BR solids
 
+    # === Fe2O3–C reduction stoichiometry ===
+    # Amount of Fe2O3 contained in 1 kg of dry BR solids
+    m_Fe2O3 = p["m_solid"] * p["w_Fe2O3"]            # kg Fe2O3 per batch
+    n_Fe2O3 = m_Fe2O3 / p["M_Fe2O3"]                 # mol Fe2O3
+
+    # Moles of carbon available from coke
+    n_C = p["m_coke"] / p["M_C"]                     # mol C
+
+    # Reaction: Fe2O3 + C → 2 FeO + CO
+    # Stoichiometry requires 1 mol C per 1 mol Fe2O3
+    n_red = min(n_Fe2O3, n_C)                        # mol of Fe2O3 that is reduced (C-limited)
+
+    # Endothermic enthalpy for Fe2O3 → FeO reduction (+, heat required)
+    Q_red = n_red * p["dH_red_Fe2O3_to_FeO"]         # kJ
+
+    # Mass loss due to oxygen removal (per mol Fe2O3 reduced)
+    m_O_loss_solid = n_red * p["m_loss_per_mol_Fe2O3"]
+
+    # 2) Solid mass to be preheated (BR + CaCO3 + SiO2)
     m_pre = p["m_solid"] + p["m_CaCO3"] + p["m_silica"]
-    m_vbr = p["m_solid"] + p["m_silica"] + 0.56 * p["m_CaCO3"]
 
+    # === Final VBR solid mass after Fe2O3 reduction ===
+    m_solid_reduced = p["m_solid"] - m_O_loss_solid
+    m_vbr = m_solid_reduced + p["m_silica"] + 0.56 * p["m_CaCO3"]
+
+    # 3) Latent heat of evaporation and sensible heat
     Q_latent = m_water * p["h_vap"]
+
     T_start = p.get("T_in_preheat", p["T_amb"])
     Q_sensible = m_pre * p["cp_solid"] * (p["T_furn"] - T_start)
 
+    # Heat required for CaCO3 decomposition
     n_CaCO3 = p["m_CaCO3"] / p["M_CaCO3"]
     Q_CaCO3 = n_CaCO3 * p["dH_CaCO3"]
 
+    # 4) Fusion heat (optional) and coke LHV credit
     if p.get("ignore_fusion", False):
         Q_fusion = 0.0
     else:
         Q_fusion = p["L_fus"] * m_vbr
+
     Q_coke = p["m_coke"] * p["LHV_coke"]
 
-    Q_min_batch = Q_sensible + Q_latent + Q_CaCO3 + Q_fusion - Q_coke
+    # 5) Minimum furnace energy demand including Fe-oxide reduction
+    Q_min_batch = Q_sensible + Q_latent + Q_CaCO3 + Q_fusion + Q_red - Q_coke
     Q_min_batch_kWh = Q_min_batch / 3600.0
 
+    # Convert to per-kg-VBR basis (functional unit)
     Q_min_kWh_per_kg = Q_min_batch_kWh / m_vbr
     E_furn_ind_per_kg = Q_min_kWh_per_kg / p["eta_furn_ind"]
 
@@ -150,39 +180,49 @@ def compute_Qmin_and_Efurn(p):
         "E_furn_ind": E_furn_ind_per_kg,
     }
 
+
 def get_default_params():
     params = {
-        "w_moist": 0.05,    # moisture fraction of BR
-        "cp_solid": 1.1,      # kJ/kg/K
-        "T_amb": 25.0,       # °C
-        "T_furn": 1300.0,    # °C
+        "w_moist": 0.05,           # Initial moisture content of BR (mass fraction)
+        "cp_solid": 1.1,           # Specific heat capacity of solids (kJ/kg/K)
+        "T_amb": 25.0,             # Ambient temperature (°C)
+        "T_furn": 1200.0,          # Target furnace temperature (°C)
 
-        # Preheated inlet temperature for sensible heat
-        "T_in_preheat": 300.0,    # °C
+        # Inlet temperature of preheated solids
+        "T_in_preheat": 400.0,     # °C
 
-        "m_solid": 1.0,      # kg dry BR solids (batch basis)
-        "h_vap": 2257.0,   # kJ/kg,   NIST Chemistry WebBook (Thermophysical Properties of Water)
- 
-        "m_CaCO3": 0.22,      # kg/kg,    Ind scale addition from Georgiades et al. 2025
-        "M_CaCO3": 0.100,    # kg/mol
-        "dH_CaCO3": 180.0,   # kJ/mol,    Process metallurgy literature (e.g., Mills 2011) typically uses ~170–180 kJ/mol
+        # Batch basis: 1 kg dry BR solids
+        "m_solid": 1.0,            # kg dry BR solids per batch
 
-        "m_silica": 0.15,          # kg/kg,    Ind scale addition from Georgiades et al. 2025
-        "m_coke": 0.0204,       # kg/kg,   Ind scale addition from Georgiades et al. 2025
-        "LHV_coke": 28200.0,  # kJ/kg,   IPCC 2006 Guidelines for National Greenhouse Gas Inventories, 28.2 MJ/kg” (≈28,200 kJ/kg) 
-        "L_fus": 500.0,            # kJ/kg,    chosen as high-end of slag fusion enthalpy range (Mills et al., 2011)
+        # === Fe2O3–C reduction parameters ===
+        "w_Fe2O3": 0.48,           # Fe2O3 weight fraction in BR solids
+        "M_Fe2O3": 0.1597,         # Molar mass of Fe2O3 (kg/mol)
+        "M_C": 0.0120,             # Molar mass of carbon (kg/mol)
+        "dH_red_Fe2O3_to_FeO": 170.0,   # Enthalpy for Fe2O3 → FeO (kJ/mol)
+        "m_loss_per_mol_Fe2O3": 0.016,  # Solid mass lost per mol Fe2O3 reduced (kg)
 
-        # Ignore fusion heat (set Q_fusion = 0)
-        "ignore_fusion": True,
-        "eta_furn_ind": 0.75,
+        "h_vap": 2257.0,           # Latent heat of water evaporation (kJ/kg)
 
-        "E_mix": 0.025,      # kWh/kg, Pilot scale data from Georgiades et al. 2025
-        "E_pellet": 0.05,     # kWh/kg, Ind scale data from Georgiades et al. 2025
-        "E_preheat_extra": 0.00,
-        "E_cool": 0.00,
-        "E_mill": 0.05,      # kWh/kg,
+        "m_CaCO3": 0.22,           # CaCO3 addition (kg per kg BR solids)
+        "M_CaCO3": 0.100,          # Molar mass of CaCO3 (kg/mol)
+        "dH_CaCO3": 180.0,         # Decomposition enthalpy of CaCO3 (kJ/mol)
 
-        "transport_distance_km": 50.0,   # Derived from Georgiades et al. (2025) SI Tables S12–S14:
+        "m_silica": 0.15,          # Silica addition (kg/kg)
+        "m_coke": 0.0204,          # Coke input (kg/kg)
+        "LHV_coke": 28200.0,       # Coke lower heating value (kJ/kg)
+        "L_fus": 500.0,            # Heat of fusion of slag (kJ/kg)
+
+        "ignore_fusion": True,     # Ignore fusion heat (set Q_fusion = 0)
+        "eta_furn_ind": 0.82,      # Induction furnace efficiency
+
+        # Electricity consumption for upstream steps
+        "E_mix": 0.025,            # Mixing (kWh/kg)
+        "E_pellet": 0.05,          # Pelletisation (kWh/kg)
+        "E_preheat_extra": 0.00,   # Additional preheating electricity (kWh/kg)
+        "E_cool": 0.00,            # Cooling electricity (kWh/kg)
+        "E_mill": 0.05,            # Final milling (kWh/kg)
+
+        "transport_distance_km": 50.0,   # Transport distance for BR (km)
     }
 
     res = compute_Qmin_and_Efurn(params)
