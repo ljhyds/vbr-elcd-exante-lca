@@ -156,16 +156,20 @@ def compute_Qmin_and_Efurn(p):
     n_CaCO3 = p["m_CaCO3"] / p["M_CaCO3"]
     Q_CaCO3 = n_CaCO3 * p["dH_CaCO3"]
 
-    # 4) Fusion heat (optional) and coke LHV credit
+    # 4) Fusion heat (optional)
     if p.get("ignore_fusion", False):
         Q_fusion = 0.0
     else:
         Q_fusion = p["L_fus"] * m_vbr
 
-    Q_coke = p["m_coke"] * p["LHV_coke"]
+    # 5) Enthalpy of coke combustion: C → CO2
+    #    All coke carbon is assumed to oxidise to CO2 eventually.
+    n_C_to_CO2 = n_C                                 # mol C → CO2
+    Q_C_comb = n_C_to_CO2 * p["dH_C_to_CO2"]         # kJ (negative, exothermic)
 
-    # 5) Minimum furnace energy demand including Fe-oxide reduction
-    Q_min_batch = Q_sensible + Q_latent + Q_CaCO3 + Q_fusion + Q_red - Q_coke
+    # 6) Minimum furnace energy demand (enthalpy-based)
+    #    Process heat = sensible + latent + CaCO3 + fusion + Fe-oxide reduction + C combustion
+    Q_min_batch = Q_sensible + Q_latent + Q_CaCO3 + Q_fusion + Q_red + Q_C_comb
     Q_min_batch_kWh = Q_min_batch / 3600.0
 
     # Convert to per-kg-VBR basis (functional unit)
@@ -189,7 +193,7 @@ def get_default_params():
         "T_furn": 1200.0,          # Target furnace temperature (°C)
 
         # Inlet temperature of preheated solids
-        "T_in_preheat": 400.0,     # °C
+        "T_in_preheat": 300.0,     # °C
 
         # Batch basis: 1 kg dry BR solids
         "m_solid": 1.0,            # kg dry BR solids per batch
@@ -208,8 +212,12 @@ def get_default_params():
         "dH_CaCO3": 180.0,         # Decomposition enthalpy of CaCO3 (kJ/mol)
 
         "m_silica": 0.15,          # Silica addition (kg/kg)
+
+        # Coke input – used in stoichiometry and C → CO2 enthalpy
         "m_coke": 0.0204,          # Coke input (kg/kg)
-        "LHV_coke": 28200.0,       # Coke lower heating value (kJ/kg)
+        "LHV_coke": 28200.0,       # Kept for reference; not used in Q_min
+        "dH_C_to_CO2": -393.0,     # Enthalpy of C(s) + O2 → CO2 (kJ/mol, exothermic)
+
         "L_fus": 500.0,            # Heat of fusion of slag (kJ/kg)
 
         "ignore_fusion": True,     # Ignore fusion heat (set Q_fusion = 0)
@@ -230,6 +238,8 @@ def get_default_params():
     params["Q_min_kWh"] = res["Q_min_kWh"]
     params["E_furn"] = res["E_furn_ind"]
     return params
+
+
 
 
 # -------------------------------
