@@ -187,8 +187,8 @@ def compute_Qmin_and_Efurn(p):
 
 def get_default_params():
     params = {
-        "w_moist": 0.05,           # Initial moisture content of BR (mass fraction)
-        "cp_solid": 1.1,           # Specific heat capacity of solids (kJ/kg/K)
+        "w_moist": 0.09,           # Initial moisture content of BR (mass fraction)
+        "cp_solid": 1.0,           # Specific heat capacity of solids (kJ/kg/K)
         "T_amb": 25.0,             # Ambient temperature (°C)
         "T_furn": 1200.0,          # Target furnace temperature (°C)
 
@@ -196,7 +196,7 @@ def get_default_params():
         "T_in_preheat": 300.0,     # °C
 
         # Batch basis: 1 kg dry BR solids
-        "m_solid": 1.0,            # kg dry BR solids per batch
+        "m_solid": 1.1,            # kg dry BR solids per batch
 
         # === Fe2O3–C reduction parameters ===
         "w_Fe2O3": 0.48,           # Fe2O3 weight fraction in BR solids
@@ -221,7 +221,7 @@ def get_default_params():
         "L_fus": 500.0,            # Heat of fusion of slag (kJ/kg)
 
         "ignore_fusion": True,     # Ignore fusion heat (set Q_fusion = 0)
-        "eta_furn_ind": 0.82,      # Induction furnace efficiency
+        "eta_furn_ind": 0.75,      # Induction furnace efficiency
 
         # Electricity consumption for upstream steps
         "E_mix": 0.025,            # Mixing (kWh/kg)
