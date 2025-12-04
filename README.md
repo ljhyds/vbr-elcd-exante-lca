@@ -3,7 +3,6 @@
 ![Python](https://img.shields.io/badge/Python-3.11-blue.svg)
 ![openLCA](https://img.shields.io/badge/openLCA-2.5.x-2ea44f.svg)
 ![Brightway](https://img.shields.io/badge/Brightway-4.x-orange.svg)
-![GitHub release (latest)](https://img.shields.io/github/v/release/ljhyds/vbr-elcd-exante-lca)
 
 Reproducible free-toolchain workflow for the ex-ante LCA of Vitrified Bauxite Residue (VBR).
 
